@@ -16,8 +16,6 @@
 *.sqlite
 
 # Dependências externas
-/go.mod
-/go.sum
 /vendor/
 
 # Arquivos de configuração IDE/Editor específicos
