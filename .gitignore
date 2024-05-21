@@ -1,0 +1,27 @@
+# Binários compilados
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+
+# Arquivos de saída
+/bin/
+/pkg/
+
+# Arquivos de log e banco de dados
+*.log
+*.sql
+*.sqlite
+
+# Dependências externas
+/go.mod
+/go.sum
+/vendor/
+
+# Arquivos de configuração IDE/Editor específicos
+.vscode/
+.idea/
+*.swp
+*.swo
