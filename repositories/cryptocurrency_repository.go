@@ -23,8 +23,8 @@ func NewCryptocurrencyRepository(db *sqlx.DB) CryptocurrencyRepository {
 }
 
 func (r *cryptocurrencyRepository) Create(crypto *models.Cryptocurrency) error {
-	query := `INSERT INTO cryptocurrency (name, balance, purchase_date, purchase_amount, created_date) 
-			  VALUES (:name, :balance, :purchase_date, :purchase_amount, :created_date)`
+	query := `INSERT INTO cryptocurrency (name, balance, fiat_balance, created_date) 
+			  VALUES (:name, :balance, :fiat_balance, :created_date)`
 	_, err := r.db.NamedExec(query, crypto)
 	return err
 }
@@ -37,18 +37,17 @@ func (r *cryptocurrencyRepository) GetAll() ([]models.Cryptocurrency, error) {
 
 func (r *cryptocurrencyRepository) GetByID(id uint32) (*models.Cryptocurrency, error) {
 	var crypto models.Cryptocurrency
-	err := r.db.Get(&crypto, "SELECT * FROM cryptocurrency WHERE id=$1", id)
+	err := r.db.Get(&crypto, "SELECT * FROM cryptocurrency WHERE cryptocurrency_id=$1", id)
 	return &crypto, err
 }
 
 func (r *cryptocurrencyRepository) Update(crypto *models.Cryptocurrency) error {
-	query := `UPDATE cryptocurrency SET name=:name, balance=:balance, purchase_date=:purchase_date, 
-			  purchase_amount=:purchase_amount, created_date=:created_date WHERE id=:id`
+	query := `UPDATE cryptocurrency SET name=:name, balance=:balance, fiat_balance=:fiat_balance, created_date=:created_date WHERE cryptocurrency_id=:cryptocurrency_id`
 	_, err := r.db.NamedExec(query, crypto)
 	return err
 }
 
 func (r *cryptocurrencyRepository) Delete(id uint32) error {
-	_, err := r.db.Exec("DELETE FROM cryptocurrency WHERE id=$1", id)
+	_, err := r.db.Exec("DELETE FROM cryptocurrency WHERE cryptocurrency_id=$1", id)
 	return err
 }

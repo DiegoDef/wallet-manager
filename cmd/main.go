@@ -14,27 +14,27 @@ func main() {
 	cfg := config.LoadConfig()
 	database := db.NewDB(&cfg.DB)
 
-	repo := repositories.NewCryptocurrencyRepository(database)
-	service := services.NewCryptocurrencyService(repo)
-	handler := handlers.NewCryptocurrencyHandler(service)
+	cryptoRepo := repositories.NewCryptocurrencyRepository(database)
+	cryptoService := services.NewCryptocurrencyService(cryptoRepo)
+	cryptoHandler := handlers.NewCryptocurrencyHandler(cryptoService)
+
+	transactionRepo := repositories.NewCryptoTransactionRepository(database)
+	transationService := services.NewCryptoTransactionService(transactionRepo)
+	transactionHandler := handlers.NewCryptoTransactionHandler(transationService)
 
 	r := gin.Default()
 
-	r.POST("/cryptocurrency", handler.Create)
-	r.GET("/cryptocurrency", handler.GetAll)
-	r.GET("/cryptocurrency/:id", handler.GetByID)
-	r.PUT("/cryptocurrency/:id", handler.Update)
-	r.DELETE("/cryptocurrency/:id", handler.Delete)
+	r.POST("/cryptocurrencies", cryptoHandler.Create)
+	r.GET("/cryptocurrencies", cryptoHandler.GetAll)
+	r.GET("/cryptocurrencies/:cryptoId", cryptoHandler.GetByID)
+	r.PUT("/cryptocurrencies/:cryptoId", cryptoHandler.Update)
+	r.DELETE("/cryptocurrencies/:cryptoId", cryptoHandler.Delete)
 
-	// repo = repositories.NewCryptocurrencyRepository(database)
-	// service = services.NewCryptocurrencyService(repo)
-	// handler = handlers.NewCryptocurrencyHandler(service)
-
-	// r.POST("/cryptocurrency/:idCrptcy/transaction", handler.Create)
-	// r.GET("/cryptocurrency/:idCrptcy/transaction", handler.GetAll)
-	// r.GET("/cryptocurrency/:idCrptcy/transaction/:id", handler.GetByID)
-	// r.PUT("/cryptocurrency/:idCrptcy/transaction/:id", handler.Update)
-	// r.DELETE("/cryptocurrency/:idCrptcy/transaction/:id", handler.Delete)
+	r.POST("/cryptocurrencies/:cryptoId/transactions", transactionHandler.Create)
+	r.GET("/cryptocurrencies/:cryptoId/transactions", transactionHandler.GetAll)
+	r.GET("/cryptocurrencies/:cryptoId/transactions/:transactionId", transactionHandler.GetByID)
+	r.PUT("/cryptocurrencies/:cryptoId/transactions/:transactionId", transactionHandler.Update)
+	r.DELETE("/cryptocurrencies/:cryptoId/transactions/:transactionId", transactionHandler.Delete)
 
 	r.Run(":" + cfg.Port)
 }

@@ -10,21 +10,28 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type CryptocurrencyHandler struct {
-	service services.CryptocurrencyService
+type CryptoTransactionHandler struct {
+	service services.CryptoTransactionService
 }
 
-func NewCryptocurrencyHandler(service services.CryptocurrencyService) *CryptocurrencyHandler {
-	return &CryptocurrencyHandler{service: service}
+func NewCryptoTransactionHandler(service services.CryptoTransactionService) *CryptoTransactionHandler {
+	return &CryptoTransactionHandler{service: service}
 }
 
-func (h *CryptocurrencyHandler) Create(c *gin.Context) {
-	var crypto models.Cryptocurrency
+func (h *CryptoTransactionHandler) Create(c *gin.Context) {
+	cryptoId, err := strconv.Atoi(c.Param("cryptoId"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid cryptoId"})
+		return
+	}
+
+	var crypto models.CryptoTransaction
 	if err := c.ShouldBindJSON(&crypto); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
+	crypto.CryptocurrencyId = uint32(cryptoId)
 	crypto.CreatedDate = utils.NowFormatted()
 	if err := h.service.Create(&crypto); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -34,8 +41,14 @@ func (h *CryptocurrencyHandler) Create(c *gin.Context) {
 	c.JSON(http.StatusCreated, crypto)
 }
 
-func (h *CryptocurrencyHandler) GetAll(c *gin.Context) {
-	cryptos, err := h.service.GetAll()
+func (h *CryptoTransactionHandler) GetAll(c *gin.Context) {
+	cryptoId, err := strconv.Atoi(c.Param("cryptoId"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid cryptoId"})
+		return
+	}
+
+	cryptos, err := h.service.GetAll(uint32(cryptoId))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -43,8 +56,8 @@ func (h *CryptocurrencyHandler) GetAll(c *gin.Context) {
 	c.JSON(http.StatusOK, cryptos)
 }
 
-func (h *CryptocurrencyHandler) GetByID(c *gin.Context) {
-	id, err := strconv.Atoi(c.Param("cryptoId"))
+func (h *CryptoTransactionHandler) GetByID(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("transactionId"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid ID"})
 		return
@@ -57,27 +70,27 @@ func (h *CryptocurrencyHandler) GetByID(c *gin.Context) {
 	}
 
 	if crypto == nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "cryptocurrency not found"})
+		c.JSON(http.StatusNotFound, gin.H{"error": "cryptoTransaction not found"})
 		return
 	}
 
 	c.JSON(http.StatusOK, crypto)
 }
 
-func (h *CryptocurrencyHandler) Update(c *gin.Context) {
-	id, err := strconv.Atoi(c.Param("cryptoId"))
+func (h *CryptoTransactionHandler) Update(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("transactionId"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid ID"})
 		return
 	}
 
-	var crypto models.Cryptocurrency
+	var crypto models.CryptoTransaction
 	if err := c.ShouldBindJSON(&crypto); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	crypto.ID = uint32(id)
 
+	crypto.ID = uint32(id)
 	if err := h.service.Update(&crypto); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -86,8 +99,8 @@ func (h *CryptocurrencyHandler) Update(c *gin.Context) {
 	c.JSON(http.StatusOK, crypto)
 }
 
-func (h *CryptocurrencyHandler) Delete(c *gin.Context) {
-	id, err := strconv.Atoi(c.Param("cryptoId"))
+func (h *CryptoTransactionHandler) Delete(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("transactionId"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid ID"})
 		return
