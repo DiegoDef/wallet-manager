@@ -13,7 +13,6 @@
 # Arquivos de log e banco de dados
 *.log
 *.sql
-*.sqlite
 
 # Dependências externas
 /vendor/
@@ -23,3 +22,7 @@
 .idea/
 *.swp
 *.swo
+
+# Go workspace file
+go.work
+go.work.sum
