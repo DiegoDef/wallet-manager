@@ -3,6 +3,7 @@ package handlers
 import (
 	"net/http"
 	"strconv"
+	"strings"
 	"wallet-manager/models"
 	"wallet-manager/services"
 	"wallet-manager/utils"
@@ -65,18 +66,11 @@ func (h *CryptocurrencyHandler) GetByID(c *gin.Context) {
 }
 
 func (h *CryptocurrencyHandler) Update(c *gin.Context) {
-	id, err := strconv.Atoi(c.Param("cryptoId"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid ID"})
-		return
-	}
-
 	var crypto models.Cryptocurrency
 	if err := c.ShouldBindJSON(&crypto); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	crypto.ID = uint32(id)
 
 	if err := h.service.Update(&crypto); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -99,4 +93,21 @@ func (h *CryptocurrencyHandler) Delete(c *gin.Context) {
 	}
 
 	c.Status(http.StatusNoContent)
+}
+
+func (h *CryptocurrencyHandler) GetMultiplePrices(c *gin.Context) {
+	namesParam := c.Query("names")
+	if namesParam == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "no names provided"})
+		return
+	}
+
+	names := strings.Split(namesParam, ",")
+	prices, err := utils.GetMultipleCryptoPrices(names)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, prices)
 }

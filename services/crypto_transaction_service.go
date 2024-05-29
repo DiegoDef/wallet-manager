@@ -1,6 +1,7 @@
 package services
 
 import (
+	"fmt"
 	"wallet-manager/models"
 	"wallet-manager/repositories"
 )
@@ -14,15 +15,24 @@ type CryptoTransactionService interface {
 }
 
 type cryptoTransactionService struct {
-	repo repositories.CryptoTransactionRepository
+	repo          repositories.CryptoTransactionRepository
+	cryptoService CryptocurrencyService
 }
 
-func NewCryptoTransactionService(repo repositories.CryptoTransactionRepository) CryptoTransactionService {
-	return &cryptoTransactionService{repo: repo}
+func NewCryptoTransactionService(repo repositories.CryptoTransactionRepository, cryptoService CryptocurrencyService) CryptoTransactionService {
+	return &cryptoTransactionService{repo: repo, cryptoService: cryptoService}
 }
 
 func (s *cryptoTransactionService) Create(crypto *models.CryptoTransaction) error {
-	return s.repo.Create(crypto)
+	err := s.repo.Create(crypto)
+	if err == nil {
+		cryptocurrency := models.Cryptocurrency{ID: crypto.CryptocurrencyId, Balance: crypto.CryptocurrencyAmount, CostInFiat: crypto.FiatAmount}
+		err = s.cryptoService.UpdateBalance(&cryptocurrency)
+		if err != nil {
+			fmt.Println("Erro ao atualizar balance")
+		}
+	}
+	return err
 }
 
 func (s *cryptoTransactionService) GetAll(cryptoId uint32) ([]models.CryptoTransaction, error) {

@@ -11,6 +11,7 @@ type CryptocurrencyRepository interface {
 	GetAll() ([]models.Cryptocurrency, error)
 	GetByID(id uint32) (*models.Cryptocurrency, error)
 	Update(crypto *models.Cryptocurrency) error
+	UpdateBalance(crypto *models.Cryptocurrency) error
 	Delete(id uint32) error
 }
 
@@ -43,6 +44,12 @@ func (r *cryptocurrencyRepository) GetByID(id uint32) (*models.Cryptocurrency, e
 
 func (r *cryptocurrencyRepository) Update(crypto *models.Cryptocurrency) error {
 	query := `UPDATE cryptocurrency SET name=:name, balance=:balance, fiat_balance=:fiat_balance, created_date=:created_date WHERE cryptocurrency_id=:cryptocurrency_id`
+	_, err := r.db.NamedExec(query, crypto)
+	return err
+}
+
+func (r *cryptocurrencyRepository) UpdateBalance(crypto *models.Cryptocurrency) error {
+	query := `UPDATE cryptocurrency SET balance = :balance + balance, fiat_balance = :fiat_balance + fiat_balance WHERE cryptocurrency_id=:cryptocurrency_id`
 	_, err := r.db.NamedExec(query, crypto)
 	return err
 }

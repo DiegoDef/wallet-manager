@@ -19,7 +19,7 @@ func main() {
 	cryptoHandler := handlers.NewCryptocurrencyHandler(cryptoService)
 
 	transactionRepo := repositories.NewCryptoTransactionRepository(database)
-	transationService := services.NewCryptoTransactionService(transactionRepo)
+	transationService := services.NewCryptoTransactionService(transactionRepo, cryptoService)
 	transactionHandler := handlers.NewCryptoTransactionHandler(transationService)
 
 	r := gin.Default()
@@ -27,8 +27,10 @@ func main() {
 	r.POST("/cryptocurrencies", cryptoHandler.Create)
 	r.GET("/cryptocurrencies", cryptoHandler.GetAll)
 	r.GET("/cryptocurrencies/:cryptoId", cryptoHandler.GetByID)
-	r.PUT("/cryptocurrencies/:cryptoId", cryptoHandler.Update)
+	r.PUT("/cryptocurrencies", cryptoHandler.Update)
 	r.DELETE("/cryptocurrencies/:cryptoId", cryptoHandler.Delete)
+
+	r.GET("/prices", cryptoHandler.GetMultiplePrices)
 
 	r.POST("/cryptocurrencies/:cryptoId/transactions", transactionHandler.Create)
 	r.GET("/cryptocurrencies/:cryptoId/transactions", transactionHandler.GetAll)
