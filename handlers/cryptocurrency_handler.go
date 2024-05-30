@@ -103,7 +103,7 @@ func (h *CryptocurrencyHandler) GetMultiplePrices(c *gin.Context) {
 	}
 
 	names := strings.Split(namesParam, ",")
-	prices, err := utils.GetMultipleCryptoPrices(names)
+	prices, err := utils.GetCryptoPrices(names)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

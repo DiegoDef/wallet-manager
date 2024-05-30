@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 	"time"
+	"wallet-manager/models"
 
 	"github.com/shopspring/decimal"
 )
@@ -14,22 +15,7 @@ type MultiCoinGeckoResponse map[string]struct {
 	Usd float64 `json:"usd"`
 }
 
-func GetCryptoPrice(cryptoName string) (decimal.Decimal, error) {
-	cryptoName = strings.ToLower(cryptoName)
-	prices, err := GetMultipleCryptoPrices([]string{cryptoName})
-	if err != nil {
-		return decimal.Zero, err
-	}
-
-	price, exists := prices[cryptoName]
-	if !exists {
-		return decimal.Zero, fmt.Errorf("price for %s not found", cryptoName)
-	}
-
-	return decimal.NewFromFloat(price), nil
-}
-
-func GetMultipleCryptoPrices(cryptoNames []string) (map[string]float64, error) {
+func GetCryptoPrices(cryptoNames []string) (map[string]decimal.Decimal, error) {
 	client := &http.Client{Timeout: 10 * time.Second}
 	ids := strings.Join(cryptoNames, ",")
 	url := fmt.Sprintf("https://api.coingecko.com/api/v3/simple/price?ids=%s&vs_currencies=usd", ids)
@@ -49,10 +35,18 @@ func GetMultipleCryptoPrices(cryptoNames []string) (map[string]float64, error) {
 		return nil, err
 	}
 
-	prices := make(map[string]float64, len(result))
+	prices := make(map[string]decimal.Decimal, len(result))
 	for name, data := range result {
-		prices[name] = data.Usd
+		prices[name] = decimal.NewFromFloat(data.Usd)
 	}
 
 	return prices, nil
+}
+
+func GetCryptoNames(cryptos []models.Cryptocurrency) []string {
+	var cryptoNames []string = make([]string, len(cryptos))
+	for i, crypto := range cryptos {
+		cryptoNames[i] = strings.ToLower(crypto.Name)
+	}
+	return cryptoNames
 }

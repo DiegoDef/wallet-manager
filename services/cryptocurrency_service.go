@@ -2,6 +2,8 @@ package services
 
 import (
 	"fmt"
+	"strings"
+	"sync"
 	"wallet-manager/models"
 	"wallet-manager/repositories"
 	"wallet-manager/utils"
@@ -31,7 +33,45 @@ func (s *cryptocurrencyService) Create(crypto *models.Cryptocurrency) error {
 }
 
 func (s *cryptocurrencyService) GetAll() ([]models.Cryptocurrency, error) {
-	return s.repo.GetAll()
+	cryptos, err := s.repo.GetAll()
+	if err != nil {
+		return nil, err
+	}
+
+	prices, err := utils.GetCryptoPrices(utils.GetCryptoNames(cryptos))
+	if err != nil {
+		return nil, fmt.Errorf("failed to calculate profit: %s", err)
+	}
+
+	var wg sync.WaitGroup
+	// Canal para capturar erros
+	errCh := make(chan error, len(cryptos))
+
+	for i := range cryptos {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			// Processar cada criptomoeda e capturar erro, se houver
+			err := calculateProfitPercentage(&cryptos[i], prices)
+			if err != nil {
+				errCh <- err
+			}
+		}(i)
+	}
+
+	// Aguardar a conclusão de todas as goroutines
+	wg.Wait()
+	// Fechar o canal de erros
+	close(errCh)
+
+	// Verificar se houve algum erro
+	for err := range errCh {
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return cryptos, nil
 }
 
 func (s *cryptocurrencyService) GetByID(id uint32) (*models.Cryptocurrency, error) {
@@ -40,13 +80,30 @@ func (s *cryptocurrencyService) GetByID(id uint32) (*models.Cryptocurrency, erro
 		return crypto, err
 	}
 
-	return calculateProfitPercentage(crypto)
+	cryptoName := strings.ToLower(crypto.Name)
+	prices, err := utils.GetCryptoPrices([]string{cryptoName})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get crypto price: %s", err)
+	}
+
+	price, exists := prices[cryptoName]
+	if !exists {
+		return nil, fmt.Errorf("price for %s not found", cryptoName)
+	}
+
+	calculateProfitPercentage(crypto, map[string]decimal.Decimal{cryptoName: price})
+	return crypto, err
 }
 
-func calculateProfitPercentage(crypto *models.Cryptocurrency) (*models.Cryptocurrency, error) {
-	price, err := utils.GetCryptoPrice(crypto.Name)
-	if err != nil {
-		return crypto, fmt.Errorf("failed to calculate profit: %s", err)
+func calculateProfitPercentage(crypto *models.Cryptocurrency, prices map[string]decimal.Decimal) error {
+	if crypto.CostInFiat.IsZero() || crypto.Balance.IsZero() {
+		return fmt.Errorf("failed to calculate profit. CostInFiat or balance is zero")
+	}
+
+	cryptoName := strings.ToLower(crypto.Name)
+	price, exists := prices[cryptoName]
+	if !exists {
+		return fmt.Errorf("price for %s not found", cryptoName)
 	}
 
 	cost := crypto.CostInFiat
@@ -58,7 +115,7 @@ func calculateProfitPercentage(crypto *models.Cryptocurrency) (*models.Cryptocur
 
 	crypto.ProfitPercentage = float32(profitPercentage)
 
-	return crypto, nil
+	return nil
 }
 
 func (s *cryptocurrencyService) Update(crypto *models.Cryptocurrency) error {
