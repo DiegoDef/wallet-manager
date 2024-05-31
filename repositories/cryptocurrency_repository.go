@@ -25,7 +25,7 @@ func NewCryptocurrencyRepository(db *sqlx.DB) CryptocurrencyRepository {
 
 func (r *cryptocurrencyRepository) Create(crypto *models.Cryptocurrency) error {
 	query := `INSERT INTO cryptocurrency (name, balance, fiat_balance, created_date) 
-			  VALUES (:name, :balance, :fiat_balance, :created_date)`
+			  VALUES (LOWER(:name), :balance, :fiat_balance, :created_date)`
 	_, err := r.db.NamedExec(query, crypto)
 	return err
 }
