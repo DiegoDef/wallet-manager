@@ -8,5 +8,6 @@ type Cryptocurrency struct {
 	Balance          decimal.Decimal `json:"balance" db:"balance"`
 	CostInFiat       decimal.Decimal `json:"fiatBalance" db:"fiat_balance"`
 	CreatedDate      string          `json:"createdDate" db:"created_date"`
-	ProfitPercentage float32
+	ProfitPercentage float32         `db:"profit_percentage"`
+	ProfitUSD        float32         `db:"usd_profit"`
 }
