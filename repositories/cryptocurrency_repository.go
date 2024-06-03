@@ -25,9 +25,15 @@ func NewCryptocurrencyRepository(db *sqlx.DB) CryptocurrencyRepository {
 
 func (r *cryptocurrencyRepository) Create(crypto *models.Cryptocurrency) error {
 	query := `INSERT INTO cryptocurrency (name, balance, fiat_balance, created_date) 
-			  VALUES (LOWER(:name), :balance, :fiat_balance, :created_date)`
-	_, err := r.db.NamedExec(query, crypto)
-	return err
+			  VALUES (LOWER(:name), :balance, :fiat_balance, :created_date) 
+			  RETURNING cryptocurrency_id`
+	stmt, err := r.db.PrepareNamed(query)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	return stmt.Get(&crypto.ID, crypto)
 }
 
 func (r *cryptocurrencyRepository) GetAll() ([]models.Cryptocurrency, error) {
