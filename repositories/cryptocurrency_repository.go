@@ -54,10 +54,10 @@ func (r *cryptocurrencyRepository) GetByID(id uint32) (*models.Cryptocurrency, e
 	var crypto models.Cryptocurrency
 	query := `
 		SELECT c.*,
-		((c.balance * p.price_usd)/ c.fiat_balance)*100 AS profit_percentage,
-		(c.balance * p.price_usd) - c.fiat_balance AS usd_profit
+		((c.balance * cp.price_usd)/ c.fiat_balance)*100 AS profit_percentage,
+		(c.balance * cp.price_usd) - c.fiat_balance AS usd_profit
 		FROM cryptocurrency c
-		INNER JOIN crypto_price p ON LOWER(c.name) = LOWER(p.name)
+		INNER JOIN crypto_price cp ON LOWER(c.name) = LOWER(cp.name)
 		WHERE c.cryptocurrency_id=$1
 	`
 	err := r.db.Get(&crypto, query, id)
