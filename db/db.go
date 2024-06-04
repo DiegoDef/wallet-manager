@@ -18,5 +18,9 @@ func NewDB(cfg *config.DatabaseConfig) *sqlx.DB {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}
 
+	if err := db.Ping(); err != nil {
+		log.Fatalf("Failed to connect to database: %v", err)
+	}
+
 	return db
 }
