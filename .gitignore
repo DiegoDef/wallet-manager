@@ -12,7 +12,6 @@
 
 # Arquivos de log e banco de dados
 *.log
-*.sql
 
 # Dependências externas
 /vendor/
