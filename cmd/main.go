@@ -2,7 +2,7 @@ package main
 
 import (
 	"wallet-manager/config"
-	"wallet-manager/db"
+	db "wallet-manager/database"
 	"wallet-manager/handlers"
 	"wallet-manager/repositories"
 	"wallet-manager/services"
