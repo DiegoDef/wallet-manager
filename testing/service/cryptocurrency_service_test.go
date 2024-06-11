@@ -10,6 +10,7 @@ import (
 	"wallet-manager/models"
 	"wallet-manager/repositories"
 	"wallet-manager/services"
+	helper "wallet-manager/testing"
 	"wallet-manager/utils"
 
 	"github.com/gin-gonic/gin"
@@ -22,7 +23,7 @@ import (
 var testDbInstance *sqlx.DB
 
 func TestMain(m *testing.M) {
-	testDB := SetupTestDatabase()
+	testDB := helper.SetupTestDatabase()
 	testDbInstance = testDB.DbInstance
 	defer testDB.TearDown()
 	os.Exit(m.Run())
@@ -32,7 +33,7 @@ func InsertCryptoPrice() {
 	testDbInstance.Query("INSERT INTO crypto_price (name, price_usd) VALUES ('Bitcoin', 1.0);")
 }
 
-func TestGetAllUsers(t *testing.T) {
+func TestGetAllCryptocurrencies(t *testing.T) {
 	repo := repositories.NewCryptocurrencyRepository(testDbInstance)
 	service := services.NewCryptocurrencyService(repo)
 	h := handlers.NewCryptocurrencyHandler(service)
@@ -60,8 +61,30 @@ func TestGetAllUsers(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, responseRecorder.Result().StatusCode)
 	assert.Equal(t, 3, len(cryptos))
-	// for _, crypto := range cryptos {
-	// 	assert.Contains(t, crypto.Name, "radha geethika")
-	// 	// repo.GetAll()[0]
-	// }
+}
+
+func TestCreateCryptocurrency(t *testing.T) {
+	repo := repositories.NewCryptocurrencyRepository(testDbInstance)
+	service := services.NewCryptocurrencyService(repo)
+	h := handlers.NewCryptocurrencyHandler(service)
+
+	engine := gin.Default()
+	engine.POST("/cryptocurrencies", h.Create)
+
+	server := httptest.NewServer(engine)
+	defer server.Close()
+
+	request, err := http.NewRequest(http.MethodPost, server.URL+"/cryptocurrencies", createCryptocurrencyJson())
+	require.NoError(t, err)
+
+	responseRecorder := httptest.NewRecorder()
+	engine.ServeHTTP(responseRecorder, request)
+
+	var crypto models.Cryptocurrency
+	err = json.NewDecoder(responseRecorder.Body).Decode(&crypto)
+	cryptoSaved, errGetById := repo.GetByID(crypto.ID)
+	require.NoError(t, err)
+	require.NoError(t, errGetById)
+	assert.Equal(t, http.StatusCreated, responseRecorder.Result().StatusCode)
+	assert.Equal(t, "bitcoin", cryptoSaved.Name)
 }
