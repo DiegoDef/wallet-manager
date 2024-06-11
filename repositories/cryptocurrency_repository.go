@@ -14,10 +14,10 @@ const (
 	`
 	getByIDQuery = `
 		SELECT c.*,
-		((c.balance * cp.price_usd)/ c.fiat_balance)*100 AS profit_percentage,
-		(c.balance * cp.price_usd) - c.fiat_balance AS usd_profit
+		get_percentage_profit(c.balance, cp.price_usd, c.fiat_balance) AS profit_percentage,
+		get_usd_profit(c.balance, cp.price_usd, c.fiat_balance) AS usd_profit
 		FROM cryptocurrency c
-		INNER JOIN crypto_price cp ON LOWER(c.name) = LOWER(cp.name)
+		LEFT JOIN crypto_price cp ON LOWER(c.name) = LOWER(cp.name)
 		WHERE c.cryptocurrency_id=$1;
 	`
 	updateCryptocurrencyQuery = `
@@ -32,10 +32,11 @@ const (
 	`
 	deleteCryptocurrencyQuery = `DELETE FROM cryptocurrency WHERE cryptocurrency_id=$1;`
 	getAllCryptocurrencyQuery = `
-		SELECT c.*, ((c.balance * p.price_usd)/ c.fiat_balance)*100 AS profit_percentage,
-		(c.balance * p.price_usd) - c.fiat_balance AS usd_profit
+		SELECT c.*,
+		get_percentage_profit(c.balance, cp.price_usd, c.fiat_balance) AS profit_percentage,
+		get_usd_profit(c.balance, cp.price_usd, c.fiat_balance) AS usd_profit
 		FROM cryptocurrency c
-		INNER JOIN crypto_price p ON LOWER(c.name) = LOWER(p.name)
+		LEFT JOIN crypto_price cp ON LOWER(c.name) = LOWER(cp.name)
 		ORDER BY profit_percentage DESC;
 	`
 )
@@ -63,7 +64,6 @@ func (r *cryptocurrencyRepository) Create(crypto *models.Cryptocurrency) error {
 		return err
 	}
 	defer stmt.Close()
-
 	return stmt.Get(&crypto.ID, crypto)
 }
 
