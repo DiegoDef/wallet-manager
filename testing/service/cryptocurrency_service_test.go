@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strings"
 	"testing"
 	"wallet-manager/handlers"
 	"wallet-manager/models"
@@ -74,7 +75,9 @@ func TestCreateCryptocurrency(t *testing.T) {
 	server := httptest.NewServer(engine)
 	defer server.Close()
 
-	request, err := http.NewRequest(http.MethodPost, server.URL+"/cryptocurrencies", createCryptocurrencyJson())
+	cryptoToSave := createCryptocurrency()
+
+	request, err := http.NewRequest(http.MethodPost, server.URL+"/cryptocurrencies", createCryptocurrencyJson(cryptoToSave))
 	require.NoError(t, err)
 
 	responseRecorder := httptest.NewRecorder()
@@ -82,9 +85,47 @@ func TestCreateCryptocurrency(t *testing.T) {
 
 	var crypto models.Cryptocurrency
 	err = json.NewDecoder(responseRecorder.Body).Decode(&crypto)
-	cryptoSaved, errGetById := repo.GetByID(crypto.ID)
+	savedCrypto, errGetById := repo.GetByID(crypto.ID)
 	require.NoError(t, err)
 	require.NoError(t, errGetById)
 	assert.Equal(t, http.StatusCreated, responseRecorder.Result().StatusCode)
-	assert.Equal(t, "bitcoin", cryptoSaved.Name)
+	assert.Equal(t, strings.ToLower(cryptoToSave.Name), savedCrypto.Name)
+	// assert.Equal(t, cryptoToSave.Balance, savedCrypto.Balance)
+	// assert.Equal(t, cryptoToSave.CostInFiat, savedCrypto.CostInFiat)
+}
+
+func TestUpdateCryptocurrency(t *testing.T) {
+	repo := repositories.NewCryptocurrencyRepository(testDbInstance)
+	service := services.NewCryptocurrencyService(repo)
+	h := handlers.NewCryptocurrencyHandler(service)
+
+	engine := gin.Default()
+	engine.PUT("/cryptocurrencies", h.Update)
+
+	server := httptest.NewServer(engine)
+	defer server.Close()
+
+	toSave := createCryptocurrency()
+	err := repo.Create(&toSave)
+	require.NoError(t, err)
+
+	cryptoToUpdate := createCryptoWithParamaters("Litecoin", decimal.NewFromInt(10), decimal.NewFromInt(70000))
+	cryptoToUpdate.ID = toSave.ID
+
+	request, err := http.NewRequest(http.MethodPut, server.URL+"/cryptocurrencies", createCryptocurrencyJson(cryptoToUpdate))
+	require.NoError(t, err)
+
+	responseRecorder := httptest.NewRecorder()
+	engine.ServeHTTP(responseRecorder, request)
+
+	var crypto models.Cryptocurrency
+	err = json.NewDecoder(responseRecorder.Body).Decode(&crypto)
+	updatedCrypto, errGetById := repo.GetByID(crypto.ID)
+	require.NoError(t, err)
+	require.NoError(t, errGetById)
+	assert.Equal(t, http.StatusOK, responseRecorder.Result().StatusCode)
+	assert.Equal(t, strings.ToLower(cryptoToUpdate.Name), updatedCrypto.Name)
+	assert.NotEqual(t, toSave.Name, updatedCrypto.Name)
+	// assert.Equal(t, toSave.Balance, updatedCrypto.Balance)
+	// assert.Equal(t, toSave.CostInFiat, updatedCrypto.CostInFiat)
 }
