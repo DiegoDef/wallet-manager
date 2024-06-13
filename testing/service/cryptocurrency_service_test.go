@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strconv"
 	"strings"
 	"testing"
 	"wallet-manager/handlers"
@@ -128,4 +129,32 @@ func TestUpdateCryptocurrency(t *testing.T) {
 	assert.NotEqual(t, toSave.Name, updatedCrypto.Name)
 	// assert.Equal(t, toSave.Balance, updatedCrypto.Balance)
 	// assert.Equal(t, toSave.CostInFiat, updatedCrypto.CostInFiat)
+}
+
+func TestDeleteCryptocurrency(t *testing.T) {
+	repo := repositories.NewCryptocurrencyRepository(testDbInstance)
+	service := services.NewCryptocurrencyService(repo)
+	h := handlers.NewCryptocurrencyHandler(service)
+
+	engine := gin.Default()
+	engine.DELETE("/cryptocurrencies/:cryptoId", h.Delete)
+
+	server := httptest.NewServer(engine)
+	defer server.Close()
+
+	toDelete := createCryptocurrency()
+	err := repo.Create(&toDelete)
+	require.NoError(t, err)
+
+	idToDelete := strconv.FormatUint(uint64(toDelete.ID), 10)
+	request, err := http.NewRequest(http.MethodDelete, server.URL+"/cryptocurrencies/"+idToDelete, nil)
+	require.NoError(t, err)
+
+	responseRecorder := httptest.NewRecorder()
+	engine.ServeHTTP(responseRecorder, request)
+
+	assert.Equal(t, http.StatusNoContent, responseRecorder.Result().StatusCode)
+	exist := true
+	testDbInstance.Get(&exist, "select exists(select * from cryptocurrency where cryptocurrency_id = $1)", idToDelete)
+	assert.False(t, exist)
 }
