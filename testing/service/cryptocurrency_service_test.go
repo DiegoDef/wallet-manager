@@ -158,3 +158,33 @@ func TestDeleteCryptocurrency(t *testing.T) {
 	testDbInstance.Get(&exist, "select exists(select * from cryptocurrency where cryptocurrency_id = $1)", idToDelete)
 	assert.False(t, exist)
 }
+
+func TestFindByIdCryptocurrency(t *testing.T) {
+	repo := repositories.NewCryptocurrencyRepository(testDbInstance)
+	service := services.NewCryptocurrencyService(repo)
+	h := handlers.NewCryptocurrencyHandler(service)
+
+	engine := gin.Default()
+	engine.GET("/cryptocurrencies/:cryptoId", h.GetByID)
+
+	server := httptest.NewServer(engine)
+	defer server.Close()
+
+	toFind := createCryptocurrency()
+	err := repo.Create(&toFind)
+	require.NoError(t, err)
+
+	idToFind := strconv.FormatUint(uint64(toFind.ID), 10)
+	request, err := http.NewRequest(http.MethodGet, server.URL+"/cryptocurrencies/"+idToFind, nil)
+	require.NoError(t, err)
+
+	responseRecorder := httptest.NewRecorder()
+	engine.ServeHTTP(responseRecorder, request)
+
+	var crypto models.Cryptocurrency
+	err = json.NewDecoder(responseRecorder.Body).Decode(&crypto)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, responseRecorder.Result().StatusCode)
+	assert.Equal(t, toFind.ID, crypto.ID)
+	assert.Equal(t, strings.ToLower(toFind.Name), crypto.Name, crypto.Name)
+}
