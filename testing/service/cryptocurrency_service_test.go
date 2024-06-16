@@ -23,6 +23,7 @@ import (
 )
 
 var testDbInstance *sqlx.DB
+var tc testContext
 
 func TestMain(m *testing.M) {
 	testDB := helper.SetupTestDatabase()
@@ -31,49 +32,66 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-func InsertCryptoPrice() {
+type testContext struct {
+	repo    repositories.CryptocurrencyRepository
+	service services.CryptocurrencyService
+	handle  *handlers.CryptocurrencyHandler
+	engine  *gin.Engine
+}
+
+func beforeEach() {
+	deleteAll()
+}
+
+func beforeAll() {
+	tc.repo = repositories.NewCryptocurrencyRepository(testDbInstance)
+	tc.service = services.NewCryptocurrencyService(tc.repo)
+	tc.handle = handlers.NewCryptocurrencyHandler(tc.service)
+	tc.engine = gin.Default()
+	insertCryptoPrice()
+}
+
+func after() {
+}
+
+func testCase(test func(t *testing.T)) func(*testing.T) {
+	return func(t *testing.T) {
+		beforeEach()
+		defer after()
+		test(t)
+	}
+}
+
+func insertCryptoPrice() {
 	testDbInstance.Query("INSERT INTO crypto_price (name, price_usd) VALUES ('Bitcoin', 1.0);")
 }
 
-func TestGetAllCryptocurrencies(t *testing.T) {
-	repo := repositories.NewCryptocurrencyRepository(testDbInstance)
-	service := services.NewCryptocurrencyService(repo)
-	h := handlers.NewCryptocurrencyHandler(service)
-
-	InsertCryptoPrice()
-	c := models.Cryptocurrency{Name: "Bitcoin", Balance: decimal.NewFromInt(1), CostInFiat: decimal.NewFromInt(60000), CreatedDate: utils.NowFormatted()}
-	repo.Create(&c)
-	repo.Create(&c)
-	repo.Create(&c)
-
-	engine := gin.Default()
-	engine.GET("/cryptocurrencies", h.GetAll)
-
-	server := httptest.NewServer(engine)
-	defer server.Close()
-
-	request, err := http.NewRequest(http.MethodGet, server.URL+"/cryptocurrencies", nil)
-	require.NoError(t, err)
-
-	responseRecorder := httptest.NewRecorder()
-	engine.ServeHTTP(responseRecorder, request)
-
-	var cryptos []models.Cryptocurrency
-	err = json.NewDecoder(responseRecorder.Body).Decode(&cryptos)
-	require.NoError(t, err)
-	assert.Equal(t, http.StatusOK, responseRecorder.Result().StatusCode)
-	assert.Equal(t, 3, len(cryptos))
+func deleteAll() {
+	testDbInstance.Exec("DELETE FROM cryptocurrency;")
 }
 
-func TestCreateCryptocurrency(t *testing.T) {
-	repo := repositories.NewCryptocurrencyRepository(testDbInstance)
-	service := services.NewCryptocurrencyService(repo)
-	h := handlers.NewCryptocurrencyHandler(service)
+func TestCryptocurrencyService(t *testing.T) {
+	beforeAll()
+	t.Run("Should create cryptocurrency", testCase(func(t *testing.T) {
+		testCreateCryptocurrency(t)
+	}))
+	t.Run("Should get all cryptocurrency", testCase(func(t *testing.T) {
+		testGetAllCryptocurrencies(t)
+	}))
+	t.Run("Should find by ID cryptocurrency", testCase(func(t *testing.T) {
+		testFindByIdCryptocurrency(t)
+	}))
+	t.Run("Should update cryptocurrency", testCase(func(t *testing.T) {
+		testUpdateCryptocurrency(t)
+	}))
+	t.Run("Should get all cryptocurrency", testCase(func(t *testing.T) {
+		testDeleteCryptocurrency(t)
+	}))
+}
 
-	engine := gin.Default()
-	engine.POST("/cryptocurrencies", h.Create)
-
-	server := httptest.NewServer(engine)
+func testCreateCryptocurrency(t *testing.T) {
+	tc.engine.POST("/cryptocurrencies", tc.handle.Create)
+	server := httptest.NewServer(tc.engine)
 	defer server.Close()
 
 	cryptoToSave := createCryptocurrency()
@@ -82,11 +100,11 @@ func TestCreateCryptocurrency(t *testing.T) {
 	require.NoError(t, err)
 
 	responseRecorder := httptest.NewRecorder()
-	engine.ServeHTTP(responseRecorder, request)
+	tc.engine.ServeHTTP(responseRecorder, request)
 
 	var crypto models.Cryptocurrency
 	err = json.NewDecoder(responseRecorder.Body).Decode(&crypto)
-	savedCrypto, errGetById := repo.GetByID(crypto.ID)
+	savedCrypto, errGetById := tc.repo.GetByID(crypto.ID)
 	require.NoError(t, err)
 	require.NoError(t, errGetById)
 	assert.Equal(t, http.StatusCreated, responseRecorder.Result().StatusCode)
@@ -95,19 +113,13 @@ func TestCreateCryptocurrency(t *testing.T) {
 	// assert.Equal(t, cryptoToSave.CostInFiat, savedCrypto.CostInFiat)
 }
 
-func TestUpdateCryptocurrency(t *testing.T) {
-	repo := repositories.NewCryptocurrencyRepository(testDbInstance)
-	service := services.NewCryptocurrencyService(repo)
-	h := handlers.NewCryptocurrencyHandler(service)
-
-	engine := gin.Default()
-	engine.PUT("/cryptocurrencies", h.Update)
-
-	server := httptest.NewServer(engine)
+func testUpdateCryptocurrency(t *testing.T) {
+	tc.engine.PUT("/cryptocurrencies", tc.handle.Update)
+	server := httptest.NewServer(tc.engine)
 	defer server.Close()
 
 	toSave := createCryptocurrency()
-	err := repo.Create(&toSave)
+	err := tc.repo.Create(&toSave)
 	require.NoError(t, err)
 
 	cryptoToUpdate := createCryptoWithParamaters("Litecoin", decimal.NewFromInt(10), decimal.NewFromInt(70000))
@@ -117,11 +129,11 @@ func TestUpdateCryptocurrency(t *testing.T) {
 	require.NoError(t, err)
 
 	responseRecorder := httptest.NewRecorder()
-	engine.ServeHTTP(responseRecorder, request)
+	tc.engine.ServeHTTP(responseRecorder, request)
 
 	var crypto models.Cryptocurrency
 	err = json.NewDecoder(responseRecorder.Body).Decode(&crypto)
-	updatedCrypto, errGetById := repo.GetByID(crypto.ID)
+	updatedCrypto, errGetById := tc.repo.GetByID(crypto.ID)
 	require.NoError(t, err)
 	require.NoError(t, errGetById)
 	assert.Equal(t, http.StatusOK, responseRecorder.Result().StatusCode)
@@ -131,19 +143,14 @@ func TestUpdateCryptocurrency(t *testing.T) {
 	// assert.Equal(t, toSave.CostInFiat, updatedCrypto.CostInFiat)
 }
 
-func TestDeleteCryptocurrency(t *testing.T) {
-	repo := repositories.NewCryptocurrencyRepository(testDbInstance)
-	service := services.NewCryptocurrencyService(repo)
-	h := handlers.NewCryptocurrencyHandler(service)
+func testDeleteCryptocurrency(t *testing.T) {
+	tc.engine.DELETE("/cryptocurrencies/:cryptoId", tc.handle.Delete)
 
-	engine := gin.Default()
-	engine.DELETE("/cryptocurrencies/:cryptoId", h.Delete)
-
-	server := httptest.NewServer(engine)
+	server := httptest.NewServer(tc.engine)
 	defer server.Close()
 
 	toDelete := createCryptocurrency()
-	err := repo.Create(&toDelete)
+	err := tc.repo.Create(&toDelete)
 	require.NoError(t, err)
 
 	idToDelete := strconv.FormatUint(uint64(toDelete.ID), 10)
@@ -151,7 +158,7 @@ func TestDeleteCryptocurrency(t *testing.T) {
 	require.NoError(t, err)
 
 	responseRecorder := httptest.NewRecorder()
-	engine.ServeHTTP(responseRecorder, request)
+	tc.engine.ServeHTTP(responseRecorder, request)
 
 	assert.Equal(t, http.StatusNoContent, responseRecorder.Result().StatusCode)
 	exist := true
@@ -159,19 +166,38 @@ func TestDeleteCryptocurrency(t *testing.T) {
 	assert.False(t, exist)
 }
 
-func TestFindByIdCryptocurrency(t *testing.T) {
-	repo := repositories.NewCryptocurrencyRepository(testDbInstance)
-	service := services.NewCryptocurrencyService(repo)
-	h := handlers.NewCryptocurrencyHandler(service)
+func testGetAllCryptocurrencies(t *testing.T) {
+	crypto := models.Cryptocurrency{Name: "Bitcoin", Balance: decimal.NewFromInt(1), CostInFiat: decimal.NewFromInt(60000), CreatedDate: utils.NowFormatted()}
+	tc.repo.Create(&crypto)
+	tc.repo.Create(&crypto)
+	tc.repo.Create(&crypto)
 
-	engine := gin.Default()
-	engine.GET("/cryptocurrencies/:cryptoId", h.GetByID)
+	tc.engine.GET("/cryptocurrencies", tc.handle.GetAll)
 
-	server := httptest.NewServer(engine)
+	server := httptest.NewServer(tc.engine)
+	defer server.Close()
+
+	request, err := http.NewRequest(http.MethodGet, server.URL+"/cryptocurrencies", nil)
+	require.NoError(t, err)
+
+	responseRecorder := httptest.NewRecorder()
+	tc.engine.ServeHTTP(responseRecorder, request)
+
+	var cryptos []models.Cryptocurrency
+	err = json.NewDecoder(responseRecorder.Body).Decode(&cryptos)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, responseRecorder.Result().StatusCode)
+	assert.Equal(t, 3, len(cryptos))
+}
+
+func testFindByIdCryptocurrency(t *testing.T) {
+	tc.engine.GET("/cryptocurrencies/:cryptoId", tc.handle.GetByID)
+
+	server := httptest.NewServer(tc.engine)
 	defer server.Close()
 
 	toFind := createCryptocurrency()
-	err := repo.Create(&toFind)
+	err := tc.repo.Create(&toFind)
 	require.NoError(t, err)
 
 	idToFind := strconv.FormatUint(uint64(toFind.ID), 10)
@@ -179,7 +205,7 @@ func TestFindByIdCryptocurrency(t *testing.T) {
 	require.NoError(t, err)
 
 	responseRecorder := httptest.NewRecorder()
-	engine.ServeHTTP(responseRecorder, request)
+	tc.engine.ServeHTTP(responseRecorder, request)
 
 	var crypto models.Cryptocurrency
 	err = json.NewDecoder(responseRecorder.Body).Decode(&crypto)
