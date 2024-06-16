@@ -29,6 +29,7 @@ func TestMain(m *testing.M) {
 	testDB := helper.SetupTestDatabase()
 	testDbInstance = testDB.DbInstance
 	defer testDB.TearDown()
+	beforeAll()
 	os.Exit(m.Run())
 }
 
@@ -71,22 +72,11 @@ func deleteAll() {
 }
 
 func TestCryptocurrencyService(t *testing.T) {
-	beforeAll()
-	t.Run("Should create cryptocurrency", testCase(func(t *testing.T) {
-		testCreateCryptocurrency(t)
-	}))
-	t.Run("Should get all cryptocurrency", testCase(func(t *testing.T) {
-		testGetAllCryptocurrencies(t)
-	}))
-	t.Run("Should find by ID cryptocurrency", testCase(func(t *testing.T) {
-		testFindByIdCryptocurrency(t)
-	}))
-	t.Run("Should update cryptocurrency", testCase(func(t *testing.T) {
-		testUpdateCryptocurrency(t)
-	}))
-	t.Run("Should get all cryptocurrency", testCase(func(t *testing.T) {
-		testDeleteCryptocurrency(t)
-	}))
+	t.Run("Should create cryptocurrency", testCase(testCreateCryptocurrency))
+	t.Run("Should get all cryptocurrency", testCase(testGetAllCryptocurrencies))
+	t.Run("Should find cryptocurrency by ID", testCase(testFindCryptocurrencyById))
+	t.Run("Should find all cryptocurrency", testCase(testDeleteCryptocurrency))
+	t.Run("Should update cryptocurrency", testCase(testUpdateCryptocurrency))
 }
 
 func testCreateCryptocurrency(t *testing.T) {
@@ -190,7 +180,7 @@ func testGetAllCryptocurrencies(t *testing.T) {
 	assert.Equal(t, 3, len(cryptos))
 }
 
-func testFindByIdCryptocurrency(t *testing.T) {
+func testFindCryptocurrencyById(t *testing.T) {
 	tc.engine.GET("/cryptocurrencies/:cryptoId", tc.handle.GetByID)
 
 	server := httptest.NewServer(tc.engine)
