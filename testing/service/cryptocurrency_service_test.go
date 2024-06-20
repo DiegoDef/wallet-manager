@@ -71,12 +71,18 @@ func deleteAll() {
 	testDbInstance.Exec("DELETE FROM cryptocurrency;")
 }
 
+func deleteAllCryptoPrice() {
+	testDbInstance.Exec("DELETE FROM crypto_price;")
+}
+
 func TestCryptocurrencyService(t *testing.T) {
 	t.Run("Should create cryptocurrency", testCase(testCreateCryptocurrency))
 	t.Run("Should get all cryptocurrency", testCase(testGetAllCryptocurrencies))
 	t.Run("Should find cryptocurrency by ID", testCase(testFindCryptocurrencyById))
 	t.Run("Should find all cryptocurrency", testCase(testDeleteCryptocurrency))
 	t.Run("Should update cryptocurrency", testCase(testUpdateCryptocurrency))
+	t.Run("Should find cryptocurrency when there is no crypto price for crypto name", testCase(testFindCryptocurrencyWithoutCryptoPrice))
+	// t.Run("Should return cryptocurrency with profitPercentage", testCase(testFindCryptocurrencyWhihoutCryptoPrice))
 }
 
 func testCreateCryptocurrency(t *testing.T) {
@@ -200,6 +206,36 @@ func testFindCryptocurrencyById(t *testing.T) {
 	var crypto models.Cryptocurrency
 	err = json.NewDecoder(responseRecorder.Body).Decode(&crypto)
 	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, responseRecorder.Result().StatusCode)
+	assert.Equal(t, toFind.ID, crypto.ID)
+	assert.Equal(t, strings.ToLower(toFind.Name), crypto.Name, crypto.Name)
+}
+
+func testFindCryptocurrencyWithoutCryptoPrice(t *testing.T) {
+	server := httptest.NewServer(tc.engine)
+	defer server.Close()
+
+	deleteAllCryptoPrice()
+	toFind := createCryptocurrency()
+	toFind.Name = "CryptoWhitoutPrice"
+	err := tc.repo.Create(&toFind)
+	require.NoError(t, err)
+
+	idToFind := strconv.FormatUint(uint64(toFind.ID), 10)
+	request, err := http.NewRequest(http.MethodGet, server.URL+"/cryptocurrencies/"+idToFind, nil)
+	require.NoError(t, err)
+
+	responseRecorder := httptest.NewRecorder()
+	tc.engine.ServeHTTP(responseRecorder, request)
+
+	var crypto models.Cryptocurrency
+	err = json.NewDecoder(responseRecorder.Body).Decode(&crypto)
+	require.NoError(t, err)
+
+	existCryptoPrice := true
+	testDbInstance.Get(&existCryptoPrice, "select exists(select * from crypto_price)")
+
+	assert.False(t, existCryptoPrice)
 	assert.Equal(t, http.StatusOK, responseRecorder.Result().StatusCode)
 	assert.Equal(t, toFind.ID, crypto.ID)
 	assert.Equal(t, strings.ToLower(toFind.Name), crypto.Name, crypto.Name)
