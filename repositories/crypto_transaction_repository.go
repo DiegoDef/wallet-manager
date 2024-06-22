@@ -22,11 +22,15 @@ func NewCryptoTransactionRepository(db *sqlx.DB) CryptoTransactionRepository {
 	return &cryptoTransactionRepository{db: db}
 }
 
-func (r *cryptoTransactionRepository) Create(crypto *models.CryptoTransaction) error {
+func (r *cryptoTransactionRepository) Create(transaction *models.CryptoTransaction) error {
 	query := `INSERT INTO crypto_transaction (cryptocurrency_id, cryptocurrency_amount, fiat_amount, purchase_date, created_date) 
-			  VALUES (:cryptocurrency_id, :cryptocurrency_amount, :fiat_amount, :purchase_date, :created_date)`
-	_, err := r.db.NamedExec(query, crypto)
-	return err
+			  VALUES (:cryptocurrency_id, :cryptocurrency_amount, :fiat_amount, :purchase_date, :created_date) RETURNING transaction_id`
+	stmt, err := r.db.PrepareNamed(query)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+	return stmt.Get(&transaction.ID, transaction)
 }
 
 func (r *cryptoTransactionRepository) GetAll(cryptoId uint32) ([]models.CryptoTransaction, error) {
