@@ -217,7 +217,7 @@ func testFindCryptocurrencyWithoutCryptoPrice(t *testing.T) {
 
 	deleteAllCryptoPrice()
 	toFind := createCryptocurrency()
-	toFind.Name = "CryptoWhitoutPrice"
+	toFind.Name = "CryptoWithoutPrice"
 	err := tc.repo.Create(&toFind)
 	require.NoError(t, err)
 
