@@ -11,8 +11,8 @@ CREATE TABLE crypto_transaction (
     cryptocurrency_id INT NOT NULL,
 	cryptocurrency_amount NUMERIC(30, 18),
 	fiat_amount NUMERIC(14,2), -- only dollar at the moment
-	purchase_date DATE NOT NULL DEFAULT CURRENT_DATE,
-	created_date DATE NOT NULL DEFAULT CURRENT_DATE,
+	purchase_date TIMESTAMP NOT NULL DEFAULT CURRENT_DATE,
+	created_date TIMESTAMP NOT NULL DEFAULT CURRENT_DATE,
     FOREIGN KEY (cryptocurrency_id) REFERENCES cryptocurrency (cryptocurrency_id) ON DELETE CASCADE
 );
 
