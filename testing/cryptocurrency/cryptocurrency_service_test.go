@@ -79,7 +79,7 @@ func TestCryptocurrencyService(t *testing.T) {
 	t.Run("Should create cryptocurrency", testCase(testCreateCryptocurrency))
 	t.Run("Should get all cryptocurrency", testCase(testGetAllCryptocurrencies))
 	t.Run("Should find cryptocurrency by ID", testCase(testFindCryptocurrencyById))
-	t.Run("Should find all cryptocurrency", testCase(testDeleteCryptocurrency))
+	t.Run("Should delete cryptocurrency", testCase(testDeleteCryptocurrency))
 	t.Run("Should update cryptocurrency", testCase(testUpdateCryptocurrency))
 	t.Run("Should find cryptocurrency when there is no crypto price for crypto name", testCase(testFindCryptocurrencyWithoutCryptoPrice))
 	// t.Run("Should return cryptocurrency with profitPercentage", testCase(testFindCryptocurrencyWhihoutCryptoPrice))

@@ -79,12 +79,10 @@ func deleteAll() {
 
 func TestCryptocurrencyService(t *testing.T) {
 	t.Run("Should create cryptoTransaction", testCase(testCreateCryptoTransaction))
-	// t.Run("Should get all cryptocurrency", testCase(testGetAllCryptocurrencies))
-	// t.Run("Should find cryptocurrency by ID", testCase(testFindCryptocurrencyById))
-	// t.Run("Should find all cryptocurrency", testCase(testDeleteCryptocurrency))
-	// t.Run("Should update cryptocurrency", testCase(testUpdateCryptocurrency))
-	// t.Run("Should find cryptocurrency when there is no crypto price for crypto name", testCase(testFindCryptocurrencyWithoutCryptoPrice))
-	// t.Run("Should return cryptocurrency with profitPercentage", testCase(testFindCryptocurrencyWhihoutCryptoPrice))
+	t.Run("Should get all cryptoTransaction", testCase(testGetAllCryptoTransaction))
+	t.Run("Should find cryptoTransaction by ID", testCase(testFindCryptoTransactionById))
+	t.Run("Should delete cryptoTransaction", testCase(testDeleteCryptoTransaction))
+	// t.Run("Should update cryptoTransaction", testCase(testUpdatecryptoTransaction))
 }
 
 func testCreateCryptoTransaction(t *testing.T) {
@@ -92,7 +90,7 @@ func testCreateCryptoTransaction(t *testing.T) {
 	server := httptest.NewServer(tc.engine)
 	defer server.Close()
 
-	cryptocurrency := insertCryptocurrency(testDbInstance)
+	cryptocurrency := createCryptocurrency(testDbInstance)
 	transactionToInsert := createTransactionWithoutCryptocurrencyId()
 	expectedPurchaseDate := transactionToInsert.PurchaseDate[:strings.LastIndex(transactionToInsert.PurchaseDate, "-")] + "Z"
 	expectedCreatedDate := transactionToInsert.CreatedDate[:strings.LastIndex(transactionToInsert.CreatedDate, "-")] + "Z"
@@ -115,134 +113,115 @@ func testCreateCryptoTransaction(t *testing.T) {
 	assert.Equal(t, expectedCreatedDate, insertedTransaction.CreatedDate)
 }
 
-// func testUpdateCryptocurrency(t *testing.T) {
-// 	tc.engine.PUT("/cryptocurrencies", tc.handle.Update)
+// func testUpdatecryptoTransaction(t *testing.T) {
+// 	tc.engine.PUT("/cryptocurrencies/:cryptoId/transactions/:transactionId", tc.handle.Update)
 // 	server := httptest.NewServer(tc.engine)
 // 	defer server.Close()
 
-// 	toSave := createCryptocurrency()
+// 	toSave := createTransaction(testDbInstance)
+// 	toSave.CryptocurrencyId = createCryptocurrency(testDbInstance).ID
 // 	err := tc.repo.Create(&toSave)
 // 	require.NoError(t, err)
 
-// 	cryptoToUpdate := createCryptoWithParamaters("Litecoin", decimal.NewFromInt(10), decimal.NewFromInt(70000))
-// 	cryptoToUpdate.ID = toSave.ID
+// 	transactionToUpdate := models.CryptoTransaction{
+// 		CryptocurrencyId:     createCryptocurrency(testDbInstance).ID,
+// 		CryptocurrencyAmount: decimal.NewFromInt(130),
+// 		FiatAmount:           decimal.NewFromInt(150),
+// 		PurchaseDate:         utils.NowFormatted(),
+// 		CreatedDate:          utils.NowFormatted(),
+// 	}
+// 	transactionToUpdate.ID = toSave.ID
 
-// 	request, err := http.NewRequest(http.MethodPut, server.URL+"/cryptocurrencies", createCryptocurrencyJson(cryptoToUpdate))
+// 	request, err := http.NewRequest(http.MethodPut, server.URL+"/cryptocurrencies"+strconv.FormatUint(uint64(toSave.CryptocurrencyId), 10)+"/transactions/"+strconv.FormatUint(uint64(toSave.ID), 10), createCryptoTransactionJson(transactionToUpdate))
 // 	require.NoError(t, err)
 
 // 	responseRecorder := httptest.NewRecorder()
 // 	tc.engine.ServeHTTP(responseRecorder, request)
 
-// 	var crypto models.Cryptocurrency
-// 	err = json.NewDecoder(responseRecorder.Body).Decode(&crypto)
-// 	updatedCrypto, errGetById := tc.repo.GetByID(crypto.ID)
+// 	var transaction models.CryptoTransaction
+// 	err = json.NewDecoder(responseRecorder.Body).Decode(&transaction)
+// 	updatedtransaction, errGetById := tc.repo.GetByID(toSave.ID)
 // 	require.NoError(t, err)
 // 	require.NoError(t, errGetById)
 // 	assert.Equal(t, http.StatusOK, responseRecorder.Result().StatusCode)
-// 	assert.Equal(t, strings.ToLower(cryptoToUpdate.Name), updatedCrypto.Name)
-// 	assert.NotEqual(t, toSave.Name, updatedCrypto.Name)
-// 	// assert.Equal(t, toSave.Balance, updatedCrypto.Balance)
-// 	// assert.Equal(t, toSave.CostInFiat, updatedCrypto.CostInFiat)
+// 	assert.Equal(t, transactionToUpdate.CryptocurrencyId, updatedtransaction.CryptocurrencyId)
+// 	assert.Equal(t, transactionToUpdate.CryptocurrencyAmount, updatedtransaction.CryptocurrencyAmount)
+// 	assert.Equal(t, transactionToUpdate, updatedtransaction.PurchaseDate)
+// 	assert.Equal(t, transactionToUpdate, updatedtransaction.CreatedDate)
 // }
 
-// func testDeleteCryptocurrency(t *testing.T) {
-// 	tc.engine.DELETE("/cryptocurrencies/:cryptoId", tc.handle.Delete)
+func testDeleteCryptoTransaction(t *testing.T) {
+	tc.engine.DELETE("/cryptocurrencies/:cryptoId/transactions/:transactionId", tc.handle.Delete)
 
-// 	server := httptest.NewServer(tc.engine)
-// 	defer server.Close()
+	server := httptest.NewServer(tc.engine)
+	defer server.Close()
 
-// 	toDelete := createCryptocurrency()
-// 	err := tc.repo.Create(&toDelete)
-// 	require.NoError(t, err)
+	toDelete := createTransaction(testDbInstance)
+	err := tc.repo.Create(&toDelete)
+	require.NoError(t, err)
 
-// 	idToDelete := strconv.FormatUint(uint64(toDelete.ID), 10)
-// 	request, err := http.NewRequest(http.MethodDelete, server.URL+"/cryptocurrencies/"+idToDelete, nil)
-// 	require.NoError(t, err)
+	idToDelete := strconv.FormatUint(uint64(toDelete.ID), 10)
+	request, err := http.NewRequest(http.MethodDelete, server.URL+"/cryptocurrencies/"+strconv.FormatUint(uint64(toDelete.CryptocurrencyId), 10)+"/transactions/"+idToDelete, nil)
+	require.NoError(t, err)
 
-// 	responseRecorder := httptest.NewRecorder()
-// 	tc.engine.ServeHTTP(responseRecorder, request)
+	responseRecorder := httptest.NewRecorder()
+	tc.engine.ServeHTTP(responseRecorder, request)
 
-// 	assert.Equal(t, http.StatusNoContent, responseRecorder.Result().StatusCode)
-// 	exist := true
-// 	testDbInstance.Get(&exist, "select exists(select * from cryptocurrency where cryptocurrency_id = $1)", idToDelete)
-// 	assert.False(t, exist)
-// }
+	assert.Equal(t, http.StatusNoContent, responseRecorder.Result().StatusCode)
+	exist := true
+	testDbInstance.Get(&exist, "select exists(select * from cryptocurrency where cryptocurrency_id = $1)", idToDelete)
+	assert.False(t, exist)
+}
 
-// func testGetAllCryptocurrencies(t *testing.T) {
-// 	crypto := models.Cryptocurrency{Name: "Bitcoin", Balance: decimal.NewFromInt(1), CostInFiat: decimal.NewFromInt(60000), CreatedDate: utils.NowFormatted()}
-// 	tc.repo.Create(&crypto)
-// 	tc.repo.Create(&crypto)
-// 	tc.repo.Create(&crypto)
+func testGetAllCryptoTransaction(t *testing.T) {
+	transaction := createTransaction(testDbInstance)
+	tc.repo.Create(&transaction)
+	tc.repo.Create(&transaction)
+	tc.repo.Create(&transaction)
 
-// 	tc.engine.GET("/cryptocurrencies", tc.handle.GetAll)
+	tc.engine.GET("cryptocurrencies/:cryptoId/transactions", tc.handle.GetAll)
 
-// 	server := httptest.NewServer(tc.engine)
-// 	defer server.Close()
+	server := httptest.NewServer(tc.engine)
+	defer server.Close()
 
-// 	request, err := http.NewRequest(http.MethodGet, server.URL+"/cryptocurrencies", nil)
-// 	require.NoError(t, err)
+	request, err := http.NewRequest(http.MethodGet, server.URL+"/cryptocurrencies/"+strconv.FormatUint(uint64(transaction.CryptocurrencyId), 10)+"/transactions", nil)
+	require.NoError(t, err)
 
-// 	responseRecorder := httptest.NewRecorder()
-// 	tc.engine.ServeHTTP(responseRecorder, request)
+	responseRecorder := httptest.NewRecorder()
+	tc.engine.ServeHTTP(responseRecorder, request)
 
-// 	var cryptos []models.Cryptocurrency
-// 	err = json.NewDecoder(responseRecorder.Body).Decode(&cryptos)
-// 	require.NoError(t, err)
-// 	assert.Equal(t, http.StatusOK, responseRecorder.Result().StatusCode)
-// 	assert.Equal(t, 3, len(cryptos))
-// }
+	var cryptos []models.CryptoTransaction
+	err = json.NewDecoder(responseRecorder.Body).Decode(&cryptos)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, responseRecorder.Result().StatusCode)
+	assert.Equal(t, 3, len(cryptos))
+}
 
-// func testFindCryptocurrencyById(t *testing.T) {
-// 	tc.engine.GET("/cryptocurrencies/:cryptoId", tc.handle.GetByID)
+func testFindCryptoTransactionById(t *testing.T) {
+	tc.engine.GET("cryptocurrencies/:cryptoId/transactions/:transactionId", tc.handle.GetByID)
 
-// 	server := httptest.NewServer(tc.engine)
-// 	defer server.Close()
+	server := httptest.NewServer(tc.engine)
+	defer server.Close()
 
-// 	toFind := createCryptocurrency()
-// 	err := tc.repo.Create(&toFind)
-// 	require.NoError(t, err)
+	toFind := createTransaction(testDbInstance)
+	err := tc.repo.Create(&toFind)
+	require.NoError(t, err)
+	expectedPurchaseDate := toFind.PurchaseDate[:strings.LastIndex(toFind.PurchaseDate, "-")] + "Z"
+	expectedCreatedDate := toFind.CreatedDate[:strings.LastIndex(toFind.CreatedDate, "-")] + "Z"
 
-// 	idToFind := strconv.FormatUint(uint64(toFind.ID), 10)
-// 	request, err := http.NewRequest(http.MethodGet, server.URL+"/cryptocurrencies/"+idToFind, nil)
-// 	require.NoError(t, err)
+	idToFind := strconv.FormatUint(uint64(toFind.ID), 10)
+	request, err := http.NewRequest(http.MethodGet, server.URL+"/cryptocurrencies/"+strconv.FormatUint(uint64(toFind.CryptocurrencyId), 10)+"/transactions/"+idToFind, nil)
+	require.NoError(t, err)
 
-// 	responseRecorder := httptest.NewRecorder()
-// 	tc.engine.ServeHTTP(responseRecorder, request)
+	responseRecorder := httptest.NewRecorder()
+	tc.engine.ServeHTTP(responseRecorder, request)
 
-// 	var crypto models.Cryptocurrency
-// 	err = json.NewDecoder(responseRecorder.Body).Decode(&crypto)
-// 	require.NoError(t, err)
-// 	assert.Equal(t, http.StatusOK, responseRecorder.Result().StatusCode)
-// 	assert.Equal(t, toFind.ID, crypto.ID)
-// 	assert.Equal(t, strings.ToLower(toFind.Name), crypto.Name, crypto.Name)
-// }
-
-// func testFindCryptocurrencyWithoutCryptoPrice(t *testing.T) {
-// 	server := httptest.NewServer(tc.engine)
-// 	defer server.Close()
-
-// 	deleteAllCryptoPrice()
-// 	toFind := createCryptocurrency()
-// 	toFind.Name = "CryptoWihtoutPrice"
-// 	err := tc.repo.Create(&toFind)
-// 	require.NoError(t, err)
-
-// 	idToFind := strconv.FormatUint(uint64(toFind.ID), 10)
-// 	request, err := http.NewRequest(http.MethodGet, server.URL+"/cryptocurrencies/"+idToFind, nil)
-// 	require.NoError(t, err)
-
-// 	responseRecorder := httptest.NewRecorder()
-// 	tc.engine.ServeHTTP(responseRecorder, request)
-
-// 	var crypto models.Cryptocurrency
-// 	err = json.NewDecoder(responseRecorder.Body).Decode(&crypto)
-// 	require.NoError(t, err)
-
-// 	existCryptoPrice := true
-// 	testDbInstance.Get(&existCryptoPrice, "select exists(select * from crypto_price)")
-
-// 	assert.False(t, existCryptoPrice)
-// 	assert.Equal(t, http.StatusOK, responseRecorder.Result().StatusCode)
-// 	assert.Equal(t, toFind.ID, crypto.ID)
-// 	assert.Equal(t, strings.ToLower(toFind.Name), crypto.Name, crypto.Name)
-// }
+	var transaction models.CryptoTransaction
+	err = json.NewDecoder(responseRecorder.Body).Decode(&transaction)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, responseRecorder.Result().StatusCode)
+	assert.Equal(t, toFind.ID, transaction.ID)
+	assert.Equal(t, toFind.CryptocurrencyId, transaction.CryptocurrencyId)
+	assert.Equal(t, expectedPurchaseDate, transaction.PurchaseDate)
+	assert.Equal(t, expectedCreatedDate, transaction.CreatedDate)
+}
