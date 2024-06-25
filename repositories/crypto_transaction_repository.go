@@ -46,7 +46,7 @@ func (r *cryptoTransactionRepository) GetByID(id uint32) (*models.CryptoTransact
 }
 
 func (r *cryptoTransactionRepository) Update(crypto *models.CryptoTransaction) error {
-	query := `UPDATE crypto_transaction SET cryptocurrency_amount=:cryptocurrency_amount, fiat_amount=:fiat_amount, purchase_date=:purchase_date WHERE cryptocurrency_id=:cryptocurrency_id`
+	query := `UPDATE crypto_transaction SET cryptocurrency_amount=:cryptocurrency_amount, fiat_amount=:fiat_amount, purchase_date=:purchase_date WHERE transaction_id=:transaction_id`
 	_, err := r.db.NamedExec(query, crypto)
 	return err
 }
