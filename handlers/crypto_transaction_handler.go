@@ -78,25 +78,18 @@ func (h *CryptoTransactionHandler) GetByID(c *gin.Context) {
 }
 
 func (h *CryptoTransactionHandler) Update(c *gin.Context) {
-	id, err := strconv.Atoi(c.Param("transactionId"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid ID"})
-		return
-	}
-
-	var crypto models.CryptoTransaction
-	if err := c.ShouldBindJSON(&crypto); err != nil {
+	var transaction models.CryptoTransaction
+	if err := c.ShouldBindJSON(&transaction); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	crypto.ID = uint32(id)
-	if err := h.service.Update(&crypto); err != nil {
+	if err := h.service.Update(&transaction); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, crypto)
+	c.JSON(http.StatusOK, transaction)
 }
 
 func (h *CryptoTransactionHandler) Delete(c *gin.Context) {
